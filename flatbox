@@ -42,8 +42,11 @@ create()
     flatpak build-init $DIR/app org.flatbox.$NAME $RUNTIME $RUNTIME master > /dev/null
 
     APPDIR=$HOME/.var/app/org.flatbox.$NAME
+    mkdir -p $APPDIR/work
     cat > $APPDIR/startbox <<EOF
 #!/usr/bin/bash
+cd $APPDIR/work
+export FLATBOX_WORK=$APPDIR/work
 export PS1="[📦$NAME \W] "
 exec /usr/bin/bash
 EOF
