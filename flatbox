@@ -51,7 +51,7 @@ create()
 
     flatpak build-finish --filesystem=host --share=network --share=ipc --device=all --allow=devel ---allow=multiarch \
             --socket=pulseaudio --socket=session-bus --socket=ssh-auth --socket=system-bus     --socket=wayland --socket=x11 \
-            "--env=PS1=[📦$NAME \W] " --command=/usr/bin/bash $DIR/app  > /dev/null
+            "--env=FLATBOX=$NAME" "--env=PS1=[📦$NAME \W] " --command=$APPDIR/start $DIR/app  > /dev/null
     flatpak build-export  $DIR/repo $DIR/app master > /dev/null
     flatpak install --user -y --no-deps $DIR/repo org.flatbox.$NAME > /dev/null
     rm -rf $DIR
