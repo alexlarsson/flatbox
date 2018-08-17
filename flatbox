@@ -42,16 +42,20 @@ create()
     flatpak build-init $DIR/app org.flatbox.$NAME $RUNTIME $RUNTIME master > /dev/null
 
     APPDIR=$HOME/.var/app/org.flatbox.$NAME
+    cat > $APPDIR/startbox <<EOF
+#!/usr/bin/bash
+export PS1="[📦$NAME \W] "
+exec /usr/bin/bash
+EOF
+    chmod a+x $APPDIR/startbox
     for d in bin sbin lib lib64 libexec share etc include var; do
         mkdir -p $APPDIR/$d
         ln -s $APPDIR/$d $DIR/app/files/$d
     done
 
-
-
     flatpak build-finish --filesystem=host --share=network --share=ipc --device=all --allow=devel ---allow=multiarch \
             --socket=pulseaudio --socket=session-bus --socket=ssh-auth --socket=system-bus     --socket=wayland --socket=x11 \
-            "--env=FLATBOX=$NAME" "--env=PS1=[📦$NAME \W] " --command=$APPDIR/start $DIR/app  > /dev/null
+            "--env=FLATBOX=$NAME" --command=$APPDIR/startbox $DIR/app  > /dev/null
     flatpak build-export  $DIR/repo $DIR/app master > /dev/null
     flatpak install --user -y --no-deps $DIR/repo org.flatbox.$NAME > /dev/null
     rm -rf $DIR
