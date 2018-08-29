@@ -37,6 +37,11 @@ create()
     RUNTIME=$1
     shift
 
+    if ! flatpak info $RUNTIME &> /dev/null; then
+        echo Required runtime $RUNTIME not installed
+        exit 1
+    fi
+
     DIR=$(mktemp -d)
 
     flatpak build-init $DIR/app org.flatbox.$NAME $RUNTIME $RUNTIME master > /dev/null
