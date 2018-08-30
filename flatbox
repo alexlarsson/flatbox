@@ -49,26 +49,29 @@ create()
     APPDIR=$HOME/.var/app/org.flatbox.$NAME
     mkdir -p $APPDIR/work
     for d in bin sbin lib lib64 libexec share etc include var; do
-        mkdir -p $APPDIR/$d
-        ln -s $APPDIR/$d $DIR/app/files/$d
+        mkdir -p $APPDIR/app/files/$d
+        ln -s $APPDIR/app/files/$d $DIR/app/files/$d
     done
-    cat > $APPDIR/bin/startbox <<EOF
+    cat > $APPDIR/app/files/bin/startbox <<EOF
 #!/usr/bin/bash
 cd $APPDIR/work
 export FLATBOX_WORK=$APPDIR/work
 export PS1="[📦$NAME \W] "
 exec /usr/bin/bash
 EOF
-    chmod a+x $APPDIR/bin/startbox
+    chmod a+x $APPDIR/app/files/bin/startbox
 
     flatpak build-finish --filesystem=host --share=network --share=ipc --device=all --allow=devel ---allow=multiarch \
             --socket=pulseaudio --socket=session-bus --socket=ssh-auth --socket=system-bus     --socket=wayland --socket=x11 \
             "--env=FLATBOX=$NAME" --command=/app/bin/startbox $DIR/app  > /dev/null
     flatpak build-export  $DIR/repo $DIR/app master > /dev/null
     flatpak install --user -y --no-deps $DIR/repo org.flatbox.$NAME > /dev/null
+
     rm -rf $DIR
     ORIGIN=$(flatpak info --user --show-origin org.flatbox.$NAME)
     flatpak remote-modify --user --url= --disable $ORIGIN
+    LOCATION=$(flatpak info --user --show-location org.flatbox.$NAME)
+    cp $LOCATION/metadata $APPDIR/app
     echo "Created flatbox $NAME"
 }
 
