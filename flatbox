@@ -61,7 +61,7 @@ exec /usr/bin/bash
 EOF
     chmod a+x $APPDIR/app/files/bin/startbox
 
-    flatpak build-finish --filesystem=host --share=network --share=ipc --device=all --allow=devel ---allow=multiarch \
+    flatpak build-finish --filesystem=host --share=network --share=ipc --device=all --allow=devel --allow=multiarch \
             --socket=pulseaudio --socket=session-bus --socket=ssh-auth --socket=system-bus     --socket=wayland --socket=x11 \
             "--env=FLATBOX=$NAME" --command=/app/bin/startbox $DIR/app  > /dev/null
     flatpak build-export  $DIR/repo $DIR/app master > /dev/null
