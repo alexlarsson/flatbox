@@ -2,8 +2,16 @@
 
 #set -x
 
+XDG_DATA_HOME=${XDG_DATA_HOME:="$HOME/.local/share"}
+FLATBOX_DIR=$XDG_DATA_HOME/flatbox
 USER_DIR=${XDG_DATA_HOME:="$HOME/.local/share"}/flatpak
 ARCH=$(flatpak --default-arch)
+
+get_runtime()
+{
+    FILE=$1
+    grep "^runtime=" $FILE | sed "s/^runtime=//"
+}
 
 usage()
 {
@@ -12,12 +20,10 @@ usage()
 
 list()
 {
-    BOXES=$(flatpak list --user --app | grep ^org\.flatbox\. | awk '{ print $1 }' | awk -F / '{ print $1 }')
+    BOXES=$(ls $FLATBOX_DIR)
     echo "Current boxes:"
     for B in $BOXES; do
-        NAME=$(echo $B | awk -F '.' '{ print $3 }')
-        RUNTIME=$(flatpak info --user --show-runtime $B)
-        echo $NAME - $RUNTIME
+        echo "$B - $(get_runtime  ~/.local/share/flatbox/test/app/metadata)"
     done
 }
 
@@ -29,6 +35,11 @@ create()
     fi
     NAME=$1
     shift
+
+    if test -d $FLATBOX_DIR/$NAME; then
+        echo Box named $NAME already exist
+        exit 1
+    fi
 
     if [ "$1" == "" ]; then
         echo No runtime specified
@@ -42,36 +53,18 @@ create()
         exit 1
     fi
 
-    DIR=$(mktemp -d)
+    DIR=$FLATBOX_DIR/$NAME
+    mkdir -p $DIR
+    APPDIR=$DIR/app
 
-    flatpak build-init $DIR/app org.flatbox.$NAME $RUNTIME $RUNTIME master > /dev/null
-
-    APPDIR=$HOME/.var/app/org.flatbox.$NAME
-    mkdir -p $APPDIR/work
-    for d in bin sbin lib lib64 libexec share etc include var; do
-        mkdir -p $APPDIR/app/files/$d
-        ln -s $APPDIR/app/files/$d $DIR/app/files/$d
-    done
-    cat > $APPDIR/app/files/bin/startbox <<EOF
+    flatpak build-init $APPDIR org.flatbox.$NAME $RUNTIME $RUNTIME master > /dev/null
+    mkdir -p $APPDIR/files/bin/
+    cat > $APPDIR/files/bin/startbox <<EOF
 #!/usr/bin/bash
-cd $APPDIR/work
-export FLATBOX_WORK=$APPDIR/work
 export PS1="[📦$NAME \W] "
 exec /usr/bin/bash
 EOF
-    chmod a+x $APPDIR/app/files/bin/startbox
-
-    flatpak build-finish --filesystem=host --share=network --share=ipc --device=all --allow=devel --allow=multiarch \
-            --socket=pulseaudio --socket=session-bus --socket=ssh-auth --socket=system-bus     --socket=wayland --socket=x11 \
-            "--env=FLATBOX=$NAME" --command=/app/bin/startbox $DIR/app  > /dev/null
-    flatpak build-export  $DIR/repo $DIR/app master > /dev/null
-    flatpak install --user -y --no-deps $DIR/repo org.flatbox.$NAME > /dev/null
-
-    rm -rf $DIR
-    ORIGIN=$(flatpak info --user --show-origin org.flatbox.$NAME)
-    flatpak remote-modify --user --url= --disable $ORIGIN
-    LOCATION=$(flatpak info --user --show-location org.flatbox.$NAME)
-    cp $LOCATION/metadata $APPDIR/app
+    chmod a+x $APPDIR/files/bin/startbox
     echo "Created flatbox $NAME"
 }
 
@@ -83,8 +76,10 @@ enter()
     fi
     NAME=$1
     shift
-    #--die-with-parent ?
-    exec flatpak run org.flatbox.$NAME
+    exec flatpak build --filesystem=/tmp --filesystem=/var/tmp  --filesystem=host --share=network --share=ipc --device=all --allow=devel --allow=multiarch \
+         --socket=pulseaudio --socket=session-bus --socket=ssh-auth --socket=system-bus  --socket=wayland --socket=x11 \
+         "--env=FLATBOX=$NAME" \
+         $FLATBOX_DIR/$NAME/app /app/bin/startbox
 }
 
 delete()
@@ -95,9 +90,11 @@ delete()
     fi
     NAME=$1
     shift
-    flatpak uninstall -y --user org.flatbox.$NAME > /dev/null
-    APPDIR=$HOME/.var/app/org.flatbox.$NAME
-    rm -rf $APPDIR
+    if ! test -d $FLATBOX_DIR/$NAME; then
+        echo No box named $NAME exist
+        exit 1
+    fi
+    rm -rf $FLATBOX_DIR/$NAME
     echo "Removed flatbox $NAME"
 }
 
