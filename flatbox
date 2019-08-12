@@ -23,7 +23,7 @@ list()
     BOXES=$(ls $FLATBOX_DIR)
     echo "Current boxes:"
     for B in $BOXES; do
-        echo "$B - $(get_runtime  ~/.local/share/flatbox/test/app/metadata)"
+        echo "$B - $(get_runtime  ~/.local/share/flatbox/$B/app/metadata)"
     done
 }
 
